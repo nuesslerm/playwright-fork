@@ -76,12 +76,14 @@ export type CLIOptions = {
   userAgent?: string;
   userDataDir?: string;
   viewportSize?: ViewportSize;
+  keyboardMock?: boolean;
 };
 
 const defaultConfig: MergedConfig = {
   browser: {
     launchOptions: {},
     contextOptions: {},
+    keyboardMock: true,
   },
   timeouts: {
     action: 5000,
@@ -338,6 +340,7 @@ function configFromCLIOptions(cliOptions: CLIOptions): Config & { configFile?: s
       initPage: cliOptions.initPage,
       initScript: cliOptions.initScript,
       remoteEndpoint: cliOptions.endpoint,
+      keyboardMock: cliOptions.keyboardMock,
     },
     extension: cliOptions.extension,
     server: {

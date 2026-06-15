@@ -16,6 +16,7 @@ export async function attachKeyboardMock(
   context: BrowserContext,
   enabled: boolean
 ): Promise<void> {
-  if (!enabled) return;
+  // undefined = default (on); only skip when explicitly false (--no-keyboard-mock)
+  if (enabled === false) return;
   await context.addInitScript({ content: KEYBOARD_INIT_SCRIPT });
 }

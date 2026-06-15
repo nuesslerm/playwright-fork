@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import * as zod from 'zod';
 import type { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import type * as mcpServer from './server';
 
 export type ToolSchema<Input extends z.Schema> = {
@@ -31,7 +31,7 @@ export function toMcpTool(tool: ToolSchema<any>): mcpServer.Tool {
   return {
     name: tool.name,
     description: tool.description,
-    inputSchema: zod.toJSONSchema(tool.inputSchema) as mcpServer.Tool['inputSchema'],
+    inputSchema: zodToJsonSchema(tool.inputSchema) as mcpServer.Tool['inputSchema'],
     annotations: {
       title: tool.title,
       readOnlyHint: readOnly,

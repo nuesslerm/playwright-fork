@@ -503,7 +503,21 @@ export function createMultiServer(
 
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     serverDebug('listTools');
-    const tools = factory.toolSchemas.map(s => toMcpTool(s));
+    // Inject slotId into every real tool's inputSchema so agents know to pass it.
+    const tools = factory.toolSchemas.map(s => {
+      const tool = toMcpTool(s);
+      const schema = tool.inputSchema as { type?: string; properties?: Record<string, unknown>; required?: string[]; additionalProperties?: boolean };
+      if (schema.type === 'object') {
+        schema.properties = {
+          slotId: { type: 'string', description: 'Slot ID (branch/slot-name, e.g. "main/default"). Use browser_list_slots to see available slots.' },
+          ...(schema.properties ?? {}),
+        };
+        schema.required = ['slotId', ...(schema.required ?? [])];
+        // Allow slotId even if the original schema has additionalProperties:false.
+        delete schema.additionalProperties;
+      }
+      return tool;
+    });
     // Add synthetic browser_list_slots tool
     tools.push({
       name: 'browser_list_slots',

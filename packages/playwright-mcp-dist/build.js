@@ -205,11 +205,22 @@ async function bundleSupervisor() {
 
 // ---------------------------------------------------------------------------
 
+async function copyRuntimeAssets() {
+  // browsers.json is required at runtime by the bundled program.js via
+  // require(path.join(packageRoot, 'browsers.json')) where packageRoot is
+  // __dirname/.. (i.e. the playwright-mcp-dist/ root). esbuild can't
+  // inline it because the path is computed dynamically at runtime.
+  const src = path.join(__dirname, '../playwright-core/browsers.json');
+  const dest = path.join(__dirname, 'browsers.json');
+  await fs.promises.copyFile(src, dest);
+}
+
 (async () => {
   try {
     await generateInjectedSources();
     await bundleFork();
     await bundleSupervisor();
+    await copyRuntimeAssets();
   } catch (err) {
     console.error(err);
     process.exit(1);

@@ -36,6 +36,7 @@
     "progress": "^2.0.3",
     "proxy-from-env": "^2.1.0",
     "retry": "^0.13.1",
+    "sharp": "0.34.0",
     "signal-exit": "3.0.7",
     "socks-proxy-agent": "8.0.5",
     "source-map-support": "^0.5.21",

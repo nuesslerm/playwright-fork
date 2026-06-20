@@ -16,10 +16,12 @@
 
 import jpegjs from 'jpeg-js';
 import { PNG } from 'pngjs';
+import path from 'path';
 import * as z from 'zod';
 import { formatObject } from '@isomorphic/stringUtils';
 
 import { scaleImageToSize } from '@isomorphic/imageUtils';
+import { compressScreenshot } from './compressScreenshot';
 import { defineTabTool } from './tool';
 import { optionalElementSchema } from './snapshot';
 
@@ -69,6 +71,12 @@ const screenshot = defineTabTool({
     await response.addFileResult(resolvedFile, data);
     if (!params.filename)
       await response.registerImageResult(data, fileType);
+
+    // Compress every screenshot into <repo-root>/.screenshots/ and remove
+    // the original from wherever the MCP wrote it.
+    compressScreenshot(resolvedFile.fileName).catch(() => {
+      // Compression is best-effort; never fail the screenshot tool for it.
+    });
   }
 });
 

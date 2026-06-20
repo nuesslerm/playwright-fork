@@ -25,6 +25,7 @@ import { testDebug } from './log';
 import { packageJSON } from '../../package';
 import { attachKeyboardMock } from '../../lib/keyboard/attachKeyboardMock.js';
 import { attachAutoNavigate } from '../../lib/attachAutoNavigate.js';
+import { getCurrentBranch, probePort } from '../utils/mcp/utils';
 
 import type { Command } from 'commander';
 import type { ClientInfo } from '../utils/mcp/server';
@@ -67,32 +68,66 @@ export function resolveBaseUrl(
   );
 }
 
-/**
- * Read the first slot's metro port from the on-disk wf registry
- * and format it as a `baseUrl`. Returns `undefined` on any
- * failure — the caller treats undefined as "no signal at this
- * layer" and falls back to the default. The registry shape is
- * out-of-process and may be anything, so we catch all errors.
- */
-function readRegistryBaseUrl(): string | undefined {
-  // Lazy require: keeps the import graph small and the helper
-  // safe to call from a frozen test environment.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const fs = require('fs') as typeof import('fs');
+type RegistrySlot = { metro_claims?: { metroPort?: number } };
+type RegistryShape = { slots?: Record<string, RegistrySlot> };
+
+function registryDir(): string {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const path = require('path') as typeof import('path');
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const os = require('os') as typeof import('os');
+  return process.env.WF_REGISTRY_DIR ?? path.join(os.homedir(), '.local/state/wf-registry');
+}
+
+function readRegistry(): RegistryShape | undefined {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const fs = require('fs') as typeof import('fs');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const path = require('path') as typeof import('path');
   try {
-    const regDir = process.env.WF_REGISTRY_DIR ?? path.join(os.homedir(), '.local/state/wf-registry');
-    const reg = JSON.parse(fs.readFileSync(path.join(regDir, 'registry.json'), 'utf-8')) as { slots?: Record<string, { metro_claims?: { metroPort?: number } }> };
-    const firstSlot = Object.values(reg.slots ?? {})[0];
-    return firstSlot?.metro_claims?.metroPort !== undefined
-      ? `http://localhost:${firstSlot.metro_claims.metroPort}`
-      : undefined;
+    return JSON.parse(fs.readFileSync(path.join(registryDir(), 'registry.json'), 'utf-8')) as RegistryShape;
   } catch {
     return undefined;
   }
+}
+
+async function firstHealthyBaseUrl(slots: Record<string, RegistrySlot>): Promise<string | undefined> {
+  for (const [, slot] of Object.entries(slots)) {
+    const port = slot.metro_claims?.metroPort;
+    if (typeof port !== 'number') continue;
+    if (await probePort(port))
+      return `http://localhost:${port}`;
+  }
+  return undefined;
+}
+
+/**
+ * Resolve the dev-server URL from the wf registry, preferring the slot
+ * that belongs to the current git worktree. Order:
+ *   1. `{current-branch}/default` slot, if its metro port is healthy.
+ *   2. First healthy slot in the registry (any worktree).
+ *   3. `undefined` — caller falls back to the default port.
+ *
+ * This prevents the fork from auto-navigating to a stale port (e.g. 8081)
+ * left over from another worktree just because it happens to be first.
+ */
+async function readRegistryBaseUrl(): Promise<string | undefined> {
+  const reg = readRegistry();
+  const slots = reg?.slots;
+  if (!slots) return undefined;
+
+  const branch = await getCurrentBranch();
+  if (branch) {
+    const worktreeSlot = slots[`${branch}/default`];
+    const worktreePort = worktreeSlot?.metro_claims?.metroPort;
+    if (typeof worktreePort === 'number' && await probePort(worktreePort))
+      return `http://localhost:${worktreePort}`;
+  }
+
+  const healthy = await firstHealthyBaseUrl(slots);
+  if (healthy) return healthy;
+
+  return undefined;
 }
 import type * as playwright from '../../..';
 
@@ -186,11 +221,27 @@ export function decorateMCPCommand(command: Command) {
         // which wins over default). Only set if not already on the config (a
         // config file may have set it explicitly).
         if (!config.browser.baseUrl) {
+          const registryBaseUrl = await readRegistryBaseUrl();
           config.browser.baseUrl = resolveBaseUrl(
             options.baseUrl,
             process.env,
-            readRegistryBaseUrl()
+            registryBaseUrl
           );
+        }
+
+        // Guard: if the resolved baseUrl is not reachable, warn loudly so
+        // the user knows the browser landed on a dead dev server instead of
+        // silently staring at an error page.
+        if (config.browser.baseUrl) {
+          try {
+            const match = config.browser.baseUrl.match(/:(\d+)/);
+            const port = match ? parseInt(match[1], 10) : null;
+            if (port && !(await probePort(port))) {
+              console.error(`[playwright-mcp] WARNING: dev server ${config.browser.baseUrl} is not reachable. Run \`wf metro start\` in this worktree or pass --base-url.`);
+            }
+          } catch {
+            // best-effort guard
+          }
         }
 
         const tools = filteredTools(config);

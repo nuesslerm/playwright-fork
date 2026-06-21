@@ -19,9 +19,11 @@
 const path = require('node:path');
 
 const here = __filename;
-// cli.js is at: packages/playwright-mcp-fork/packages/playwright-mcp-dist/cli.js
-// repo root is 5 levels up from cli.js's directory
-const repoRoot = path.resolve(here, '..', '..', '..', '..', '..');
+// cli.js is at: packages/<pkg>/packages/playwright-mcp-dist/cli.js
+// enclosing package dir = 3 levels up; repo root = 5 levels up
+const enclosingPkgDir = path.resolve(here, '..', '..', '..');
+const enclosingPkgName = path.basename(enclosingPkgDir);
+const repoRoot = path.resolve(enclosingPkgDir, '..', '..');
 const cliPath = here;
 
 const isChild = process.argv.includes('--child');
@@ -66,11 +68,10 @@ async function main() {
   const { SupervisorServer } = require('./dist/supervisor-server.js');
   const { parseRestartConfig } = require('./dist/restart-config.js');
 
-  // Default watch path: dist/ of this package
-  // cli.js is at packages/playwright-mcp/packages/playwright-mcp-dist/cli.js
+  // Default watch path: dist/ of this package — derived from __filename, not hardcoded
   const defaultWatchPath = path.resolve(
     repoRoot,
-    'packages', 'playwright-mcp', 'packages', 'playwright-mcp-dist', 'dist'
+    'packages', enclosingPkgName, 'packages', 'playwright-mcp-dist', 'dist'
   );
 
   const { Command } = require('commander');

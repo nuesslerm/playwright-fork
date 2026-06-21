@@ -102,7 +102,14 @@ export class SupervisorServer {
   }
 
   listTools(): Tool[] {
-    return [...this.cachedTools, RESTART_TOOL];
+    // Claude Code's MCP client requires inputSchema.type === "object" on every
+    // tool. The playwright fork emits bare {$schema:...} objects without a type
+    // field — normalize them here so the schema validation passes.
+    const normalize = (tools: Tool[]): Tool[] => tools.map(t => {
+      if (!t.inputSchema || (t.inputSchema as Record<string, unknown>)['type'] === 'object') return t;
+      return { ...t, inputSchema: { type: 'object' as const, ...t.inputSchema } };
+    });
+    return normalize([...this.cachedTools, RESTART_TOOL]);
   }
 
   /** Drive a `tools/call` request. Returns the CallToolResult. */

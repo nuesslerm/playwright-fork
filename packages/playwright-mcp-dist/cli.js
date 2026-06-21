@@ -67,10 +67,10 @@ async function main() {
   const { parseRestartConfig } = require('./dist/restart-config.js');
 
   // Default watch path: dist/ of this package
-  // cli.js is at packages/playwright-mcp-fork/packages/playwright-mcp-dist/cli.js
+  // cli.js is at packages/playwright-mcp/packages/playwright-mcp-dist/cli.js
   const defaultWatchPath = path.resolve(
     repoRoot,
-    'packages', 'playwright-mcp-fork', 'packages', 'playwright-mcp-dist', 'dist'
+    'packages', 'playwright-mcp', 'packages', 'playwright-mcp-dist', 'dist'
   );
 
   const { Command } = require('commander');

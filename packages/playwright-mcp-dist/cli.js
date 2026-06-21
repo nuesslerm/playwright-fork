@@ -19,11 +19,6 @@
 const path = require('node:path');
 
 const here = __filename;
-// cli.js lives at <repoRoot>/packages/<pkg>/packages/playwright-mcp-dist/cli.js
-// Walk up with path.dirname (absolute throughout — no '..' string literals)
-const enclosingPkgDir = path.dirname(path.dirname(path.dirname(here)));
-const enclosingPkgName = path.basename(enclosingPkgDir);
-const repoRoot = path.dirname(path.dirname(enclosingPkgDir));
 const cliPath = here;
 
 const isChild = process.argv.includes('--child');
@@ -68,11 +63,8 @@ async function main() {
   const { SupervisorServer } = require('./dist/supervisor-server.js');
   const { parseRestartConfig } = require('./dist/restart-config.js');
 
-  // Default watch path: dist/ of this package — derived from __filename, not hardcoded
-  const defaultWatchPath = path.resolve(
-    repoRoot,
-    'packages', enclosingPkgName, 'packages', 'playwright-mcp-dist', 'dist'
-  );
+  // dist/ sits next to cli.js — __dirname is absolute, no traversal needed
+  const defaultWatchPath = path.join(path.dirname(here), 'dist');
 
   const { Command } = require('commander');
   const numberParser = (v) => {

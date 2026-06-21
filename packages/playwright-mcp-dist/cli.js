@@ -19,11 +19,11 @@
 const path = require('node:path');
 
 const here = __filename;
-// cli.js is at: packages/<pkg>/packages/playwright-mcp-dist/cli.js
-// enclosing package dir = 3 levels up; repo root = 5 levels up
-const enclosingPkgDir = path.resolve(here, '..', '..', '..');
+// cli.js lives at <repoRoot>/packages/<pkg>/packages/playwright-mcp-dist/cli.js
+// Walk up with path.dirname (absolute throughout — no '..' string literals)
+const enclosingPkgDir = path.dirname(path.dirname(path.dirname(here)));
 const enclosingPkgName = path.basename(enclosingPkgDir);
-const repoRoot = path.resolve(enclosingPkgDir, '..', '..');
+const repoRoot = path.dirname(path.dirname(enclosingPkgDir));
 const cliPath = here;
 
 const isChild = process.argv.includes('--child');

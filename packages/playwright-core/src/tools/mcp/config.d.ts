@@ -100,6 +100,19 @@ export type Config = {
      * The scripts will be evaluated in every page before any of the page's scripts.
      */
     initScript?: string[];
+
+    /**
+     * Inject a mobile QWERTY keyboard overlay into every browser context.
+     * Defaults to true. Pass false to disable (--no-keyboard-mock).
+     */
+    keyboardMock?: boolean;
+
+    /**
+     * Base URL for the Expo dev server. Used by attachAutoNavigate to redirect
+     * bare-path navigations. Resolved from --base-url, EXPO_DEV_SERVER_URL,
+     * wf registry first slot, or http://localhost:8081.
+     */
+    baseUrl?: string;
   },
 
   /**
